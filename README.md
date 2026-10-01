@@ -45,7 +45,29 @@ Offline, the page falls back to system fonts and everything still works.
 
 ## Using the app
 
-### Editing the map
+### Screen layout
+
+- **Left:** the cave board with row and column numbers, a control deck under
+  it, and a short legend.
+- **Right:** the current step: what happened, the queue or stack, the
+  pseudocode with the running line highlighted, and the counters.
+- **Below:** *How it works*, with tabs for the adjacency-list graph, search
+  order vs route, cost, and a BFS vs DFS comparison.
+
+### Choosing and editing a map
+
+The map menu above the board loads a ready-made map, and **Random** makes a
+random solvable map of the current size.
+
+| Map | What it shows |
+| --- | --- |
+| Classic 4×4 | The textbook layout. Gold is 3 moves away. |
+| DFS detour 5×5 | BFS finds 4 moves; DFS climbs the wall, backtracks out of a dead end, and returns 12 moves. |
+| Gold next door | Gold is 1 move from the start. BFS finds it at once; DFS wanders first. |
+| No path | The gold is walled off. Both searches end with **No safe path exists**. |
+
+Choose **Edit map** to change cells. The toolbar switches to the editing
+tools and a grid size picker (4 × 4 to 8 × 8). Choose **Done** when finished.
 
 | Tool | Click on a cell to… |
 | --- | --- |
@@ -53,22 +75,12 @@ Offline, the page falls back to system fonts and everything still works.
 | Gold | move the gold there |
 | Pit | add a pit, or remove one if the cell already has a pit |
 | Wumpus | move the Wumpus there |
-| Erase pit | remove a pit |
+| Erase | remove a pit |
 
 Every map always has exactly one start, one gold and one Wumpus. Items cannot
 overlap: placing something on an occupied cell is refused with a message
 explaining why. Changing the grid size keeps every item that still fits and
 moves the rest to free cells.
-
-**Ready-made maps**
-
-| Map | What it shows |
-| --- | --- |
-| Classic 4×4 | The textbook layout. Gold is 3 moves away. |
-| DFS detour | BFS finds 4 moves; DFS climbs the wall, backtracks out of a dead end, and returns 12 moves. |
-| Gold next door | Gold is 1 move from the start. BFS finds it at once; DFS wanders first. |
-| No path | The gold is walled off. Both searches end with **No safe path exists**. |
-| Random map | A random layout of the current size (always solvable). |
 
 Editing the map, loading a map, resizing or switching algorithm **clears the
 current run**, so a trace can never be replayed against a map it was not
@@ -78,12 +90,12 @@ computed for.
 
 | Control | Action |
 | --- | --- |
-| Start search | Runs the chosen algorithm on the current map and starts playback from step 1 |
+| Start / Restart | Runs the chosen algorithm on the current map and plays from step 1 |
 | ▶ / ❚❚ | Play or pause. Pausing cancels the pending step. |
-| ⏮ Previous / Next ⏭ | Move one step back or forward (pauses autoplay) |
+| ⏮ / ⏭ | Previous or next step (pauses autoplay) |
 | Step slider | Jump to any step |
-| Speed | 2 s to 0.06 s per step |
-| Reset | Cancels playback and clears the run; the map stays |
+| Speed slider | 2 s to 0.06 s per step |
+| ↺ Reset | Cancels playback and clears the run; the map stays |
 
 Keyboard: **Space** play/pause, **←/→** previous/next, **R** reset.
 
@@ -92,17 +104,18 @@ Keyboard: **Space** play/pause, **←/→** previous/next, **R** reset.
 | Look | Meaning |
 | --- | --- |
 | Plain stone | Undiscovered |
-| Teal, striped, badge **Q** or **S** | Discovered and waiting in the queue (BFS) or on the stack (DFS) |
-| White with orange ring, **▶** | Current cell: just dequeued (BFS) or top of the stack (DFS) |
-| Grey, **✓** | Processed: every neighbour has been checked |
-| Gold fill, numbered dot, line | Final path; the number is the move count from the start |
+| Teal with a dashed outline | Discovered and waiting in the queue (BFS) or on the stack (DFS) |
+| White with a glowing orange ring | Current cell: just dequeued (BFS) or top of the stack (DFS) |
+| Grey with **✓** | Processed: every neighbour has been checked |
+| Gold fill and a gold line | The final route |
 | Black hole / red Wumpus | Hazards (impassable) |
-| `#n` (top-left) | Order in which the cell was discovered |
-| Arrow (bottom-right) | Direction of the cell's parent in the search tree |
+| Small number (top-left) | Order in which the cell was discovered |
+| Faint thin lines | Parent links: the search tree built so far |
 
 A solid teal arrow marks an edge that discovers a new cell, a dashed grey arrow
 marks a neighbour that was already seen, and a dashed orange arrow marks a DFS
-backtrack.
+backtrack. A cell's full description (coordinates, state, discovery order) is
+also available to screen readers.
 
 ## How the code is organised
 
@@ -137,7 +150,7 @@ Algorithm logic, playback and rendering are separate:
 `buildGraph(map)` turns the grid into an undirected graph stored as
 **adjacency lists**. Each safe cell `u` gets a list of the safe cells beside
 it, always in the order **up, right, down, left**. This fixed order makes runs
-reproducible. Hazards get no list at all. The "The grid is a graph" panel
+reproducible. Hazards get no list at all. The *The graph* tab
 shows the live adjacency list and highlights the entry being checked.
 
 ### Breadth-first search
@@ -158,7 +171,7 @@ BFS(G, s, goal):
 
 Steps recorded: initialise, dequeue, check a neighbour that was already
 discovered, discover and enqueue a neighbour, and finish (gold found or no
-path). The queue panel labels the **front** and **rear**.
+path). The queue tape labels the **front** and **rear**.
 
 BFS removes cells in order of their distance from the start, so the first time
 it removes the gold, the parent chain is a **shortest** path in moves.
@@ -189,17 +202,17 @@ path returned.
 
 Steps recorded: initialise, inspect the top of the stack, check an
 already-visited neighbour, discover and push, backtrack (pop), and finish. The
-stack panel labels the **top**.
+stack tape labels the **top**.
 
 DFS always finds a valid path if one exists, but it does **not** promise the
-shortest one. When it returns a longer route, the results panel says how many
+shortest one. When it returns a longer route, the result box says how many
 moves BFS would need.
 
 ### Search order is not the route
 
 The `#n` numbers show discovery order. Many discovered cells never appear on
-the final route. The "Search order is not the route" panel lists both
-sequences side by side, with the route cells highlighted.
+the final route. The *Search order vs route* tab lists both sequences, with
+the route cells highlighted.
 
 ## Complexity
 
@@ -217,7 +230,7 @@ Let **V** be the number of safe cells and **E** the number of edges between them
   V entries.
 - On an n × n grid, V ≤ n² and E < 2n², so both run in O(n²).
 
-The results and cost panels report **operation counts** (cells discovered,
+The counters and the *Cost* tab report **operation counts** (cells discovered,
 neighbour checks, largest frontier, recorded steps) next to V, E and 2E.
 These come from the algorithm itself; the animation speed has no effect on
 them, and the app never presents playback time as running time.
@@ -226,13 +239,13 @@ them, and the app never presents playback time as running time.
 
 | Unit | Topic | Where it appears |
 | --- | --- | --- |
-| Unit 5 | Graph representation, adjacency lists | `buildGraph`, the adjacency-list panel |
-| Unit 5 | Breadth-first search | `bfs()` in `js/algorithms.js`, queue panel |
-| Unit 5 | Depth-first search, backtracking | `dfs()` in `js/algorithms.js`, stack panel |
+| Unit 5 | Graph representation, adjacency lists | `buildGraph`, the *The graph* tab |
+| Unit 5 | Breadth-first search | `bfs()` in `js/algorithms.js`, queue tape |
+| Unit 5 | Depth-first search, backtracking | `dfs()` in `js/algorithms.js`, stack tape |
 | Unit 5 | Graph traversal, shortest path in unweighted graphs | BFS path vs DFS path comparison |
 | Unit 1 | Queue (FIFO) | BFS frontier, front/rear labels |
 | Unit 1 | Stack (LIFO) | DFS frontier, top label, push/pop steps |
-| Unit 1 | Time and space complexity | Cost panel: O(V + E) time, O(V) space, live counts |
+| Unit 1 | Time and space complexity | *Cost* tab: O(V + E) time, O(V) space, live counts |
 
 ## Verification
 
