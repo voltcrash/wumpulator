@@ -31,13 +31,13 @@
   --wumpus: #6c1c31;
   --error: #a61b1b;
 
-  --font: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font: "Lexend", "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
   --wrap: 1240px;
   --gutter: clamp(1rem, 3vw, 2rem);
   /* Board edge length: fits the viewport height on laptops, never tiny. */
-  --board: min(100%, max(22rem, 100vh - 17rem));
+  --board: min(100%, max(22rem, 100vh - 19.5rem));
 }
 
 *,
@@ -396,61 +396,84 @@ select:hover,
 .cell-item {
   position: absolute;
   inset: 0;
+  z-index: 1;
   display: grid;
   place-items: center;
-  font-size: 0.42em;
+  font-size: 0.48em;
   line-height: 1;
   pointer-events: none;
 }
 
+/* Discovery number: a small pill so it stays legible on any fill. */
 .cell-order {
   position: absolute;
-  top: 0.14em;
-  left: 0.18em;
-  font-size: max(0.6rem, 0.17em);
-  font-weight: 700;
+  top: max(3px, 0.07em);
+  left: max(3px, 0.07em);
+  z-index: 2;
+  min-width: 1.6em;
+  padding: 0.2em 0.35em;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--ink);
+  font-size: clamp(9px, 0.15em, 13px);
+  font-weight: 600;
   line-height: 1;
+  text-align: center;
   pointer-events: none;
+}
+
+.cell-order:empty {
+  display: none;
 }
 
 /* Search states. Each has a shape cue as well as a colour. */
 
 .cell.state-frontier {
   background: var(--frontier-fill);
-  color: var(--frontier);
-  outline: 1.5px dashed var(--frontier);
-  outline-offset: -4px;
+  outline: 2px dashed var(--frontier);
+  outline-offset: -5px;
 }
 
 .cell.state-current {
   background: #fff;
-  color: var(--lantern);
-  box-shadow: inset 0 0 0 3px var(--lantern), 0 0 0 3px var(--lantern-glow), 0 0 22px 4px var(--lantern-glow);
+  box-shadow: inset 0 0 0 3px var(--lantern), 0 0 0 2px var(--lantern-glow);
   z-index: 1;
+}
+
+.cell.state-current .cell-order {
+  background: var(--lantern);
+  color: #fff;
 }
 
 .cell.state-processed {
   background: var(--processed-fill);
 }
 
+/* A large faint tick marks processed cells without crowding the corners. */
 .cell.state-processed::after {
   content: "✓";
   position: absolute;
-  top: 0.1em;
-  right: 0.16em;
-  font-size: max(0.6rem, 0.17em);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.42em;
   font-weight: 700;
   line-height: 1;
+  color: var(--processed);
+  opacity: 0.3;
 }
 
 .cell.on-route {
   background: var(--route-fill);
-  color: var(--route);
   outline: 0;
 }
 
+.cell.on-route::after {
+  content: none;
+}
+
 .cell.on-route.state-current {
-  box-shadow: inset 0 0 0 3px var(--lantern), 0 0 0 3px var(--lantern-glow);
+  box-shadow: inset 0 0 0 3px var(--lantern);
 }
 
 .cell.is-neighbour {
@@ -467,7 +490,7 @@ select:hover,
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-/* Overlay: search tree, route, and the edge being examined */
+/* Overlay: the route and the edge being examined */
 
 .overlay {
   position: absolute;
@@ -477,12 +500,6 @@ select:hover,
   pointer-events: none;
   overflow: visible;
   z-index: 2;
-}
-
-.overlay .tree line {
-  stroke: rgba(26, 37, 44, 0.22);
-  stroke-width: 0.025;
-  stroke-linecap: round;
 }
 
 .overlay .route {
@@ -534,28 +551,50 @@ select:hover,
   fill: var(--lantern);
 }
 
-/* Control deck under the board */
+/* Control deck under the board: progress on top, buttons below */
 
 .deck {
   margin-top: 0.9rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem 0.75rem;
-  padding: 0.5rem 0.6rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.45rem;
+  padding: 0.65rem 0.75rem 0.6rem;
   background: var(--rock);
   color: var(--rock-ink);
   border-radius: 16px;
 }
 
+.deck-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-left: 0.25rem;
+}
+
+.deck-count {
+  min-width: 4.2em;
+  font-size: 0.8rem;
+  text-align: right;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+.deck-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .deck-start {
-  height: 2.4rem;
+  justify-self: start;
+  height: 2.3rem;
   padding: 0 1.1rem;
   border: 0;
   border-radius: 999px;
   background: var(--paper);
   color: var(--ink);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .deck-start:hover {
@@ -565,7 +604,11 @@ select:hover,
 .deck-transport {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.35rem;
+}
+
+.deck-end {
+  justify-self: end;
 }
 
 .deck-btn {
@@ -588,16 +631,21 @@ select:hover,
 }
 
 .deck-btn svg {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.1rem;
+  height: 1.1rem;
   fill: currentColor;
 }
 
 .deck-play {
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.9rem;
+  height: 2.9rem;
   background: var(--lantern);
   color: #fff;
+}
+
+.deck-play svg {
+  width: 1.3rem;
+  height: 1.3rem;
 }
 
 .deck-play:hover:not(:disabled) {
@@ -613,47 +661,48 @@ select:hover,
   display: block;
 }
 
-.deck-track {
-  flex: 1 1 6rem;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-width: 6rem;
+.deck-speed select {
+  height: 2.3rem;
+  border: 1px solid rgba(219, 227, 231, 0.22);
+  background-color: var(--rock-2);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23dbe3e7' stroke-width='1.6'/%3E%3C/svg%3E");
+  color: var(--rock-ink);
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
-.deck-speed {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.82rem;
+.deck-speed select:hover {
+  border-color: var(--rock-ink);
 }
 
-.deck-speed svg {
-  width: 1rem;
-  height: 1rem;
-  fill: currentColor;
-  opacity: 0.8;
-}
-
-.deck-speed input {
-  width: 4.5rem;
+.deck-speed option {
+  color: var(--ink);
+  background: var(--paper);
 }
 
 .deck-reset {
-  border: 1px solid rgba(219, 227, 231, 0.25);
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(219, 227, 231, 0.22);
+}
+
+.deck-reset svg {
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 .deck-reset:hover:not(:disabled) {
   border-color: var(--rock-ink);
 }
 
-/* Range inputs on the dark deck */
+/* Step slider on the dark deck */
 
 .deck input[type="range"] {
   --fill: 0%;
   appearance: none;
   -webkit-appearance: none;
   flex: 1;
+  min-width: 0;
   height: 1.4rem;
   margin: 0;
   background: transparent;
@@ -662,7 +711,7 @@ select:hover,
 
 .deck input[type="range"]:disabled {
   cursor: default;
-  opacity: 0.4;
+  opacity: 0.45;
 }
 
 .deck input[type="range"]::-webkit-slider-runnable-track {
@@ -699,10 +748,6 @@ select:hover,
   border-radius: 50%;
   background: #fff;
   border: 0;
-}
-
-.deck-speed input[type="range"]::-webkit-slider-runnable-track {
-  background: #4a5a63;
 }
 
 /* Legend */
@@ -744,7 +789,7 @@ select:hover,
 
 .sw-current {
   background: #fff;
-  box-shadow: inset 0 0 0 2px var(--lantern), 0 0 5px var(--lantern-glow);
+  box-shadow: inset 0 0 0 2px var(--lantern);
 }
 
 .sw-processed {
@@ -1304,7 +1349,17 @@ select:hover,
 
 @media (max-width: 600px) {
   .top {
-    padding-top: 1.25rem;
+    padding-top: 1.1rem;
+    padding-bottom: 1rem;
+    gap: 0.85rem;
+  }
+
+  .brand h1 {
+    font-size: 1.45rem;
+  }
+
+  .brand p {
+    font-size: 0.9rem;
   }
 
   .algo-switch {
@@ -1314,6 +1369,7 @@ select:hover,
   .algo-option {
     flex: 1;
     justify-content: center;
+    padding: 0.4rem 0.75rem;
   }
 
   .board-col {
@@ -1339,10 +1395,18 @@ select:hover,
     grid-template-rows: 1.1rem auto;
   }
 
+  .board {
+    border-radius: 12px;
+  }
+
+  .cell {
+    border-radius: 6px;
+  }
+
   select,
   .chip-btn {
     padding: 0 0.75rem;
-    font-size: 0.88rem;
+    font-size: 0.85rem;
   }
 
   select {
@@ -1350,29 +1414,31 @@ select:hover,
     background-position: right 0.7rem center;
   }
 
+  .notice {
+    font-size: 0.82rem;
+  }
+
   .deck {
-    gap: 0.5rem;
+    padding: 0.55rem 0.6rem;
   }
 
   .deck-start {
     padding: 0 0.9rem;
   }
 
-  .deck-track {
-    order: 5;
-    flex-basis: 100%;
+  .deck-transport {
+    gap: 0.15rem;
   }
 
-  .deck-speed svg {
-    display: none;
+  .deck-speed select {
+    padding-left: 0.6rem;
+    padding-right: 1.5rem;
+    background-position: right 0.55rem center;
+    font-size: 0.8rem;
   }
 
-  .deck-speed input {
-    width: 3.5rem;
-  }
-
-  .deck-reset {
-    margin-left: auto;
+  .legend {
+    gap: 0.45rem 0.9rem;
   }
 
   .sheet {
@@ -1389,13 +1455,18 @@ select:hover,
     row-gap: 1rem;
   }
 
-  .cell.state-processed::after,
-  .cell-order {
-    font-size: 0.55rem;
-  }
-
   .tabs {
     gap: 1.1rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .deck-start {
+    padding: 0 0.7rem;
+  }
+
+  .deck-speed select {
+    max-width: 5.6rem;
   }
 }
 
