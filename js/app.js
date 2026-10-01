@@ -10,25 +10,32 @@
   const $ = (id) => document.getElementById(id);
 
   const els = {
-    board: $('board'),
+    boardFrame: $('board-frame'),
+    axisCols: $('axis-cols'),
+    axisRows: $('axis-rows'),
     cells: $('cells'),
     overlay: $('overlay'),
     notice: $('notice'),
+    toolbarView: $('toolbar-view'),
+    toolbarEdit: $('toolbar-edit'),
+    exampleSelect: $('example-select'),
     sizeSelect: $('size-select'),
+    editBtn: $('edit-btn'),
+    doneBtn: $('done-btn'),
+    randomBtn: $('random-btn'),
     startBtn: $('start-btn'),
     playBtn: $('play-btn'),
     prevBtn: $('prev-btn'),
     nextBtn: $('next-btn'),
     resetBtn: $('reset-btn'),
     stepRange: $('step-range'),
-    stepCount: $('step-count'),
     speedRange: $('speed-range'),
     speedValue: $('speed-value'),
-    structureHeading: $('structure-heading'),
-    structureHint: $('structure-hint'),
-    structureBody: $('structure-body'),
     legendFrontier: $('legend-frontier'),
-    legendFrontierMark: $('legend-frontier-mark'),
+    structureHeading: $('structure-heading'),
+    structureBody: $('structure-body'),
+    frontierLabel: $('c-frontier-label'),
+    stepIndex: $('step-index'),
     stepKind: $('step-kind'),
     stepTitle: $('step-title'),
     stepMessage: $('step-message'),
@@ -39,7 +46,6 @@
     cDiscovered: $('c-discovered'),
     cProcessed: $('c-processed'),
     cFrontier: $('c-frontier'),
-    cMax: $('c-max'),
     cChecks: $('c-checks'),
     cMoves: $('c-moves'),
     graphSize: $('graph-size'),
@@ -48,14 +54,13 @@
     costTable: $('cost-table'),
   };
 
-  const IDLE_MESSAGE =
-    'Choose BFS or DFS, then press Start search. Click cells to edit the map; an edit clears the current run.';
-
   const app = {
     map: Grid.EXAMPLES.classic.map,
+    example: 'classic',
     graph: null,
     algorithm: 'bfs',
     tool: 'pit',
+    editing: false,
     shortest: null,
   };
   app.graph = Grid.buildGraph(app.map);
@@ -72,8 +77,11 @@
   }
 
   function showSpeed() {
-    const ms = speedToDelay(els.speedRange.value);
-    els.speedValue.textContent = (ms >= 1000 ? (ms / 1000).toFixed(1) : (ms / 1000).toFixed(2)) + ' s per step';
+    const s = speedToDelay(els.speedRange.value) / 1000;
+    const text = (s >= 1 ? s.toFixed(1) : s.toFixed(2).replace(/0$/, '')) + ' s per step';
+    els.speedValue.textContent = text;
+    els.speedRange.setAttribute('aria-valuetext', text);
+    els.speedRange.title = 'Speed: ' + text;
   }
 
   // ---- notices -----------------------------------------------------------
@@ -96,22 +104,26 @@
   }
 
   function startSearch() {
+    if (app.editing) setEditing(false);
     notify('');
     buildRun();
     player.play();
   }
 
-  function clearRun(reason) {
+  // Returns a sentence to append to a notice when a run was discarded.
+  function clearRun() {
     const had = hasRun();
     player.reset();
     app.shortest = null;
-    return had ? reason : '';
+    return had ? ' The previous run was cleared.' : '';
   }
 
-  function setMap(next, message) {
-    const cleared = clearRun(' The previous run was cleared.');
+  function setMap(next, message, example) {
+    const cleared = clearRun();
     app.map = next;
     app.graph = Grid.buildGraph(next);
+    app.example = example || 'custom';
+    els.exampleSelect.value = app.example;
     els.sizeSelect.value = String(next.size);
     notify((message || '') + cleared, 'info');
     render(player.getState());
@@ -123,9 +135,8 @@
     document.querySelectorAll('.algo-option').forEach((btn) => {
       btn.setAttribute('aria-checked', String(btn.dataset.algo === id));
     });
-    document.body.dataset.algo = id;
-    const cleared = clearRun(' The previous run was cleared.');
-    notify('Switched to ' + Algorithms.ALGORITHMS[id].name + '.' + cleared, 'info');
+    const cleared = clearRun();
+    notify(cleared ? 'Switched to ' + Algorithms.ALGORITHMS[id].short + '.' + cleared : '', 'info');
     render(player.getState());
   }
 
@@ -136,15 +147,32 @@
     });
   }
 
+  function setEditing(on) {
+    app.editing = on;
+    els.toolbarView.hidden = on;
+    els.toolbarEdit.hidden = !on;
+    els.editBtn.setAttribute('aria-pressed', String(on));
+    if (on) {
+      player.pause();
+      notify('Pick a tool, then click cells. Changing the map clears the current run.', 'info');
+      const active = els.toolbarEdit.querySelector('.tool[aria-checked="true"]');
+      if (active) active.focus();
+    } else {
+      notify('');
+      els.editBtn.focus();
+    }
+    render(player.getState());
+  }
+
   // ---- drawing -----------------------------------------------------------
 
   function render(state) {
     const snap = state.snapshot;
-    renderer.renderBoard(app.map, snap, app.algorithm);
+    renderer.renderBoard(app.map, snap, app.editing);
     renderer.renderStructure(app.map, snap, app.algorithm);
     renderer.renderPseudocode(app.algorithm, snap);
-    renderer.renderExplanation(snap, IDLE_MESSAGE);
-    renderer.renderResults(snap, { shortest: app.shortest, length: state.length });
+    renderer.renderStep(snap, state, app.algorithm);
+    renderer.renderResults(snap, app.shortest);
     renderer.renderAdjacency(app.map, app.graph, snap);
     renderer.renderOrder(app.map, snap);
     renderer.renderCost(app.graph, snap, state.length);
@@ -157,22 +185,24 @@
     els.prevBtn.disabled = !state.hasTrace || state.atStart;
     els.nextBtn.disabled = state.hasTrace && state.atEnd;
     els.resetBtn.disabled = !state.hasTrace;
-    els.startBtn.textContent = state.hasTrace ? 'Restart search' : 'Start search';
+    els.startBtn.textContent = state.hasTrace ? 'Restart' : 'Start';
 
     els.stepRange.disabled = !state.hasTrace;
     els.stepRange.max = String(Math.max(0, state.length - 1));
     els.stepRange.value = String(Math.max(0, state.index));
-    els.stepCount.textContent = state.hasTrace
-      ? 'Step ' + (state.index + 1) + ' of ' + state.length
-      : 'Not started';
-    document.body.classList.toggle('is-running', state.hasTrace);
+    els.stepRange.style.setProperty('--fill', state.length > 1 ? (state.index / (state.length - 1)) * 100 + '%' : '0%');
+    els.stepRange.setAttribute('aria-valuetext', state.hasTrace ? 'Step ' + (state.index + 1) + ' of ' + state.length : 'Not started');
   }
 
-  // ---- events ------------------------------------------------------------
+  // ---- events: map -------------------------------------------------------
 
   els.cells.addEventListener('click', (event) => {
     const cell = event.target.closest('.cell');
     if (!cell) return;
+    if (!app.editing) {
+      notify('Choose Edit map to change cells.', 'info');
+      return;
+    }
     const res = Grid.applyTool(app.map, app.tool, Number(cell.dataset.index));
     if (!res.ok) notify(res.message, 'error');
     else if (res.changed) setMap(res.map, res.message);
@@ -183,26 +213,30 @@
     btn.addEventListener('click', () => setTool(btn.dataset.tool));
   });
 
-  document.querySelectorAll('.algo-option').forEach((btn) => {
-    btn.addEventListener('click', () => setAlgorithm(btn.dataset.algo));
+  els.editBtn.addEventListener('click', () => setEditing(!app.editing));
+  els.doneBtn.addEventListener('click', () => setEditing(false));
+
+  els.exampleSelect.addEventListener('change', () => {
+    const id = els.exampleSelect.value;
+    const ex = Grid.EXAMPLES[id];
+    if (ex) setMap(ex.map, ex.description, id);
   });
 
-  document.querySelectorAll('.preset[data-example]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const ex = Grid.EXAMPLES[btn.dataset.example];
-      setMap(ex.map, 'Loaded "' + ex.name + '". ' + ex.description);
-    });
-  });
-
-  $('random-btn').addEventListener('click', () => {
+  els.randomBtn.addEventListener('click', () => {
     const next = Grid.randomMap(app.map.size);
-    setMap(next, 'Generated a random ' + next.size + ' × ' + next.size + ' map with ' + next.pits.length + ' pits.');
+    setMap(next, 'Random ' + next.size + ' × ' + next.size + ' map with ' + next.pits.length + ' pits.');
   });
 
   els.sizeSelect.addEventListener('change', () => {
     const next = Grid.resizeMap(app.map, Number(els.sizeSelect.value));
-    setMap(next, 'Resized the grid to ' + next.size + ' × ' + next.size + '.');
+    setMap(next, 'Grid resized to ' + next.size + ' × ' + next.size + '.');
   });
+
+  document.querySelectorAll('.algo-option').forEach((btn) => {
+    btn.addEventListener('click', () => setAlgorithm(btn.dataset.algo));
+  });
+
+  // ---- events: playback --------------------------------------------------
 
   els.startBtn.addEventListener('click', startSearch);
 
@@ -212,15 +246,19 @@
   });
 
   els.nextBtn.addEventListener('click', () => {
-    if (!hasRun()) buildRun();
-    else player.next();
+    if (!hasRun()) {
+      if (app.editing) setEditing(false);
+      buildRun();
+    } else {
+      player.next();
+    }
   });
 
   els.prevBtn.addEventListener('click', () => player.previous());
 
   els.resetBtn.addEventListener('click', () => {
-    clearRun('');
-    notify('Run reset. The map is unchanged.', 'info');
+    clearRun();
+    notify('');
   });
 
   els.stepRange.addEventListener('input', () => player.seek(Number(els.stepRange.value)));
@@ -232,8 +270,10 @@
 
   document.addEventListener('keydown', (event) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
-    const tag = event.target.tagName;
+    const target = event.target instanceof Element ? event.target : document.body;
+    const tag = target.tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (target.getAttribute('role') === 'tab') return;
     if (event.key === ' ' && tag !== 'BUTTON') {
       event.preventDefault();
       els.playBtn.click();
@@ -248,11 +288,41 @@
     }
   });
 
+  // ---- tabs --------------------------------------------------------------
+
+  const tabs = Array.from(document.querySelectorAll('.tab'));
+
+  function selectTab(tab) {
+    tabs.forEach((t) => {
+      const on = t === tab;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      $(t.getAttribute('aria-controls')).hidden = !on;
+    });
+    render(player.getState());
+  }
+
+  tabs.forEach((tab, k) => {
+    tab.addEventListener('click', () => selectTab(tab));
+    tab.addEventListener('keydown', (event) => {
+      let next = -1;
+      if (event.key === 'ArrowRight') next = (k + 1) % tabs.length;
+      if (event.key === 'ArrowLeft') next = (k - 1 + tabs.length) % tabs.length;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = tabs.length - 1;
+      if (next >= 0) {
+        event.preventDefault();
+        tabs[next].focus();
+        selectTab(tabs[next]);
+      }
+    });
+  });
+
   // ---- boot --------------------------------------------------------------
 
-  document.body.dataset.algo = app.algorithm;
   setTool(app.tool);
   showSpeed();
+  els.exampleSelect.value = app.example;
   els.sizeSelect.value = String(app.map.size);
   render(player.getState());
 
