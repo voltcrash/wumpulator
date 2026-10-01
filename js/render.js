@@ -178,16 +178,6 @@
       root.appendChild(defs);
       if (!snapshot) return;
 
-      // Faint search tree: one line from every discovered cell to its parent.
-      const tree = svg('g', { class: 'tree' });
-      snapshot.parent.forEach((p, v) => {
-        if (p < 0) return;
-        const a = centre(size, p);
-        const b = centre(size, v);
-        tree.appendChild(svg('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y }));
-      });
-      root.appendChild(tree);
-
       if (snapshot.path && snapshot.path.length > 1) {
         const points = snapshot.path.map((v) => {
           const p = centre(size, v);
