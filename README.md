@@ -90,12 +90,11 @@ computed for.
 
 | Control | Action |
 | --- | --- |
+| Step bar (top of the deck) | Shows progress as "step / total"; drag to jump to any step |
+| ↺ Reset (beside the step count) | Cancels playback and clears the run; the map stays |
 | Start / Restart | Runs the chosen algorithm on the current map and plays from step 1 |
-| ▶ / ❚❚ | Play or pause. Pausing cancels the pending step. |
-| ⏮ / ⏭ | Previous or next step (pauses autoplay) |
-| Step slider | Jump to any step |
-| Speed slider | 2 s to 0.06 s per step |
-| ↺ Reset | Cancels playback and clears the run; the map stays |
+| ⏮ / ▶ ❚❚ / ⏭ | Previous step, play or pause, next step. Pausing cancels the pending step; stepping pauses autoplay. |
+| Speed menu | Slow (1.4 s), Normal (0.7 s), Fast (0.3 s) or Very fast (0.09 s) per step |
 
 Keyboard: **Space** play/pause, **←/→** previous/next, **R** reset.
 
@@ -110,7 +109,6 @@ Keyboard: **Space** play/pause, **←/→** previous/next, **R** reset.
 | Gold fill and a gold line | The final route |
 | Black hole / red Wumpus | Hazards (impassable) |
 | Small number (top-left) | Order in which the cell was discovered |
-| Faint thin lines | Parent links: the search tree built so far |
 
 A solid teal arrow marks an edge that discovers a new cell, a dashed grey arrow
 marks a neighbour that was already seen, and a dashed orange arrow marks a DFS
