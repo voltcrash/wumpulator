@@ -333,7 +333,7 @@
   const EXAMPLES = Object.freeze({
     classic: Object.freeze({
       name: 'Classic 4×4',
-      description: 'The textbook Wumpus World layout. The gold is reachable in 3 moves.',
+      description: 'The textbook layout. The gold is 3 moves away.',
       map: createMap({
         size: 4, start: [3, 0], gold: [1, 1], wumpus: [1, 0],
         pits: [[3, 2], [1, 2], [0, 3]],
@@ -341,7 +341,7 @@
     }),
     detour: Object.freeze({
       name: 'DFS detour 5×5',
-      description: 'BFS walks 4 moves along the bottom row. DFS climbs the left wall, hits a dead end, backtracks, and settles for a longer route.',
+      description: 'BFS needs 4 moves. DFS hits a dead end and settles for a longer route.',
       map: createMap({
         size: 5, start: [4, 0], gold: [4, 4], wumpus: [2, 2],
         pits: [[1, 2], [3, 2], [2, 4], [3, 3]],
@@ -349,7 +349,7 @@
     }),
     adjacent: Object.freeze({
       name: 'Gold next door',
-      description: 'The gold is one move to the right of the start. Watch which algorithm notices first.',
+      description: 'The gold is one move from the start. Watch which search notices first.',
       map: createMap({
         size: 4, start: [3, 0], gold: [3, 1], wumpus: [1, 1],
         pits: [[2, 2], [0, 3]],
@@ -357,7 +357,7 @@
     }),
     blocked: Object.freeze({
       name: 'No path',
-      description: 'A pit and the Wumpus seal off the gold. Both searches explore every reachable cell, then report failure.',
+      description: 'A pit and the Wumpus wall the gold off, so no route exists.',
       map: createMap({
         size: 4, start: [3, 0], gold: [0, 3], wumpus: [1, 3],
         pits: [[0, 2], [2, 1], [2, 2]],
