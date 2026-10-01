@@ -217,8 +217,6 @@ input {
 .run-panel {
   display: grid;
   gap: 1rem;
-  position: sticky;
-  top: 1rem;
 }
 
 h2 {
@@ -762,6 +760,10 @@ input[type="range"] {
   padding-top: 0.85rem;
 }
 
+.pseudo {
+  container: pseudo / inline-size;
+}
+
 .structure-hint {
   font-size: 0.82rem;
   color: var(--muted);
@@ -939,9 +941,25 @@ input[type="range"] {
 
 .code-note {
   margin-left: auto;
-  padding-left: 3em;
+  padding-left: 1.5em;
   color: #74838b;
   font-style: italic;
+  white-space: nowrap;
+}
+
+/* In a narrow panel the comments no longer fit beside the code. Hide them,
+   except on the highlighted line, where the comment drops below the code. */
+@container pseudo (max-width: 480px) {
+  .code-note {
+    display: none;
+  }
+
+  .code-line.is-active .code-note {
+    display: block;
+    flex-basis: 100%;
+    margin-left: 0;
+    padding-left: calc(2.2em + 0.75rem + 2ch);
+  }
 }
 
 .code-note::before {
@@ -1240,10 +1258,6 @@ input[type="range"] {
       "run"
       "results"
       "learn";
-  }
-
-  .run-panel {
-    position: static;
   }
 
   .results {
