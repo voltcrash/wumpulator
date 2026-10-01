@@ -29,8 +29,8 @@
     nextBtn: $('next-btn'),
     resetBtn: $('reset-btn'),
     stepRange: $('step-range'),
-    speedRange: $('speed-range'),
-    speedValue: $('speed-value'),
+    stepCount: $('step-count'),
+    speedSelect: $('speed-select'),
     legendFrontier: $('legend-frontier'),
     structureHeading: $('structure-heading'),
     structureBody: $('structure-body'),
@@ -66,23 +66,7 @@
   app.graph = Grid.buildGraph(app.map);
 
   const renderer = Render.createRenderer(els);
-  const player = Player.createPlayer({ delay: speedToDelay(els.speedRange.value), onChange: render });
-
-  // ---- speed -------------------------------------------------------------
-
-  // Slider 0..100 maps onto 2 s .. 0.06 s per step on a log scale.
-  function speedToDelay(value) {
-    const t = Number(value) / 100;
-    return Math.round(Player.MAX_DELAY * Math.pow(Player.MIN_DELAY / Player.MAX_DELAY, t));
-  }
-
-  function showSpeed() {
-    const s = speedToDelay(els.speedRange.value) / 1000;
-    const text = (s >= 1 ? s.toFixed(1) : s.toFixed(2).replace(/0$/, '')) + ' s per step';
-    els.speedValue.textContent = text;
-    els.speedRange.setAttribute('aria-valuetext', text);
-    els.speedRange.title = 'Speed: ' + text;
-  }
+  const player = Player.createPlayer({ delay: Number(els.speedSelect.value), onChange: render });
 
   // ---- notices -----------------------------------------------------------
 
@@ -191,7 +175,9 @@
     els.stepRange.max = String(Math.max(0, state.length - 1));
     els.stepRange.value = String(Math.max(0, state.index));
     els.stepRange.style.setProperty('--fill', state.length > 1 ? (state.index / (state.length - 1)) * 100 + '%' : '0%');
-    els.stepRange.setAttribute('aria-valuetext', state.hasTrace ? 'Step ' + (state.index + 1) + ' of ' + state.length : 'Not started');
+    const stepText = state.hasTrace ? 'Step ' + (state.index + 1) + ' of ' + state.length : 'Not started';
+    els.stepRange.setAttribute('aria-valuetext', stepText);
+    els.stepCount.textContent = state.hasTrace ? (state.index + 1) + ' / ' + state.length : 'Not started';
   }
 
   // ---- events: map -------------------------------------------------------
@@ -263,10 +249,7 @@
 
   els.stepRange.addEventListener('input', () => player.seek(Number(els.stepRange.value)));
 
-  els.speedRange.addEventListener('input', () => {
-    showSpeed();
-    player.setDelay(speedToDelay(els.speedRange.value));
-  });
+  els.speedSelect.addEventListener('change', () => player.setDelay(Number(els.speedSelect.value)));
 
   document.addEventListener('keydown', (event) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
@@ -321,7 +304,6 @@
   // ---- boot --------------------------------------------------------------
 
   setTool(app.tool);
-  showSpeed();
   els.exampleSelect.value = app.example;
   els.sizeSelect.value = String(app.map.size);
   render(player.getState());

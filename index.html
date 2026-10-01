@@ -7,7 +7,7 @@
   <meta name="description" content="A Wumpus World-inspired simulator that explains breadth-first and depth-first search step by step.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -79,31 +79,39 @@
       </div>
 
       <div class="deck" role="group" aria-label="Playback">
-        <button type="button" class="deck-start" id="start-btn">Start</button>
-        <div class="deck-transport">
-          <button type="button" class="deck-btn" id="prev-btn" aria-label="Previous step" title="Previous step (←)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
-          </button>
-          <button type="button" class="deck-btn deck-play" id="play-btn" aria-label="Play" title="Play or pause (Space)">
-            <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-play"><path d="M7 4v16l13-8z"/></svg>
-            <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-pause"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
-          </button>
-          <button type="button" class="deck-btn" id="next-btn" aria-label="Next step" title="Next step (→)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
-          </button>
-        </div>
-        <div class="deck-track">
+        <div class="deck-progress">
           <input type="range" id="step-range" min="0" max="0" value="0" disabled aria-label="Step">
+          <span class="deck-count" id="step-count">Not started</span>
+          <button type="button" class="deck-btn deck-reset" id="reset-btn" aria-label="Reset" title="Reset (R)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+          </button>
         </div>
-        <label class="deck-speed" title="Playback speed">
-          <span class="visually-hidden">Speed</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a9 9 0 0 0-7.8 13.5l1.7-1A7 7 0 1 1 19 12h2a9 9 0 0 0-9-8zm4.2 3.4-5.6 4.2a1.7 1.7 0 1 0 2.4 2.3z"/></svg>
-          <input type="range" id="speed-range" min="0" max="100" value="45" aria-label="Speed">
-          <output id="speed-value" class="visually-hidden">0.4 s per step</output>
-        </label>
-        <button type="button" class="deck-btn deck-reset" id="reset-btn" aria-label="Reset" title="Reset (R)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
-        </button>
+        <div class="deck-row">
+          <button type="button" class="deck-start" id="start-btn">Start</button>
+          <div class="deck-transport">
+            <button type="button" class="deck-btn" id="prev-btn" aria-label="Previous step" title="Previous step (←)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
+            </button>
+            <button type="button" class="deck-btn deck-play" id="play-btn" aria-label="Play" title="Play or pause (Space)">
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-play"><path d="M8 5v14l11-7z"/></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-pause"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+            </button>
+            <button type="button" class="deck-btn" id="next-btn" aria-label="Next step" title="Next step (→)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
+            </button>
+          </div>
+          <div class="deck-end">
+            <label class="deck-speed">
+              <span class="visually-hidden">Speed</span>
+              <select id="speed-select" aria-label="Speed">
+                <option value="1400">Slow</option>
+                <option value="700" selected>Normal</option>
+                <option value="300">Fast</option>
+                <option value="90">Very fast</option>
+              </select>
+            </label>
+          </div>
+        </div>
       </div>
 
       <ul class="legend" aria-label="Legend">
@@ -183,7 +191,7 @@
         </p>
         <p>
           The route is rebuilt at the end: BFS follows parent links back from the gold, and DFS reads
-          its stack from bottom to top. The faint lines on the board are those parent links.
+          its stack from bottom to top.
         </p>
       </div>
       <div class="order-compare" id="order-compare"></div>
