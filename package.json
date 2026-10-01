@@ -1,0 +1,11 @@
+{
+  "name": "wumpus-navigator",
+  "version": "1.0.0",
+  "description": "A Wumpus World-inspired BFS/DFS visualiser for Design and Analysis of Algorithms",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test tests/*.test.js"
+  },
+  "license": "MIT"
+}
