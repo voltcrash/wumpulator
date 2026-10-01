@@ -11,227 +11,220 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#run-panel">Skip to playback controls</a>
-
-  <header class="masthead">
-    <div class="masthead-text">
+  <header class="top">
+    <div class="brand">
       <h1>Wumpus Navigator</h1>
-      <p class="lede">
-        Watch breadth-first and depth-first search find a safe way to the gold in a
-        Wumpus World&ndash;inspired cave. The whole map is revealed; pits and the Wumpus are walls.
-      </p>
+      <p>Watch BFS and DFS search a revealed cave for a safe way to the gold.</p>
     </div>
     <div class="algo-switch" role="radiogroup" aria-label="Search algorithm">
       <button type="button" role="radio" class="algo-option" data-algo="bfs" aria-checked="true">
-        <span class="algo-short">BFS</span>
-        <span class="algo-long">Breadth-first, uses a queue</span>
+        <strong>BFS</strong><span>queue</span>
       </button>
       <button type="button" role="radio" class="algo-option" data-algo="dfs" aria-checked="false">
-        <span class="algo-short">DFS</span>
-        <span class="algo-long">Depth-first, uses a stack</span>
+        <strong>DFS</strong><span>stack</span>
       </button>
     </div>
   </header>
 
-  <main class="workspace">
-    <section class="stage" aria-labelledby="map-heading">
-      <div class="stage-head">
-        <h2 id="map-heading">Cave map</h2>
-        <div class="map-meta">
-          <label class="size-picker">
-            Grid size
-            <select id="size-select">
-              <option value="4">4 × 4</option>
-              <option value="5">5 × 5</option>
-              <option value="6">6 × 6</option>
-              <option value="7">7 × 7</option>
-              <option value="8">8 × 8</option>
-            </select>
-          </label>
-        </div>
+  <main class="stage">
+    <section class="board-col" aria-label="Cave map and playback">
+      <div class="toolbar" id="toolbar-view">
+        <label class="map-picker">
+          <span class="visually-hidden">Map</span>
+          <select id="example-select" aria-label="Load a map">
+            <option value="classic">Classic 4×4</option>
+            <option value="detour">DFS detour 5×5</option>
+            <option value="adjacent">Gold next door</option>
+            <option value="blocked">No path</option>
+            <option value="custom" disabled>Custom map</option>
+          </select>
+        </label>
+        <button type="button" class="chip-btn" id="random-btn">Random</button>
+        <button type="button" class="chip-btn chip-edit" id="edit-btn" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17.25V20h2.75L17.8 8.95l-2.75-2.75L4 17.25zm15.7-9.04a1 1 0 0 0 0-1.41l-2.5-2.5a1 1 0 0 0-1.41 0l-1.83 1.83 3.91 3.91 1.83-1.83z"/></svg>
+          Edit map
+        </button>
       </div>
 
-      <div class="editor" aria-label="Map editor">
-        <div class="tool-group" role="radiogroup" aria-label="Editing tool">
-          <span class="group-label" id="tool-label">Place</span>
-          <button type="button" role="radio" class="tool" data-tool="start" aria-checked="false"><span class="tool-icon" aria-hidden="true">🧭</span>Start</button>
-          <button type="button" role="radio" class="tool" data-tool="gold" aria-checked="false"><span class="tool-icon" aria-hidden="true">💰</span>Gold</button>
-          <button type="button" role="radio" class="tool" data-tool="pit" aria-checked="true"><span class="tool-icon" aria-hidden="true">🕳️</span>Pit</button>
-          <button type="button" role="radio" class="tool" data-tool="wumpus" aria-checked="false"><span class="tool-icon" aria-hidden="true">👹</span>Wumpus</button>
-          <button type="button" role="radio" class="tool" data-tool="erase" aria-checked="false"><span class="tool-icon" aria-hidden="true">⌫</span>Erase pit</button>
+      <div class="toolbar toolbar-edit" id="toolbar-edit" hidden>
+        <div class="tools" role="radiogroup" aria-label="Editing tool">
+          <button type="button" role="radio" class="tool" data-tool="start" aria-checked="false"><span aria-hidden="true">🧭</span>Start</button>
+          <button type="button" role="radio" class="tool" data-tool="gold" aria-checked="false"><span aria-hidden="true">💰</span>Gold</button>
+          <button type="button" role="radio" class="tool" data-tool="pit" aria-checked="true"><span aria-hidden="true">🕳️</span>Pit</button>
+          <button type="button" role="radio" class="tool" data-tool="wumpus" aria-checked="false"><span aria-hidden="true">👹</span>Wumpus</button>
+          <button type="button" role="radio" class="tool" data-tool="erase" aria-checked="false"><span aria-hidden="true">⌫</span>Erase</button>
         </div>
-        <div class="preset-group">
-          <span class="group-label">Load</span>
-          <button type="button" class="preset" data-example="classic">Classic 4×4</button>
-          <button type="button" class="preset" data-example="detour">DFS detour</button>
-          <button type="button" class="preset" data-example="adjacent">Gold next door</button>
-          <button type="button" class="preset" data-example="blocked">No path</button>
-          <button type="button" class="preset" id="random-btn">Random map</button>
-        </div>
+        <label class="size-picker">
+          <span class="visually-hidden">Grid size</span>
+          <select id="size-select" aria-label="Grid size">
+            <option value="4">4 × 4</option>
+            <option value="5">5 × 5</option>
+            <option value="6">6 × 6</option>
+            <option value="7">7 × 7</option>
+            <option value="8">8 × 8</option>
+          </select>
+        </label>
+        <button type="button" class="chip-btn chip-done" id="done-btn">Done</button>
       </div>
 
       <p class="notice" id="notice" role="status" aria-live="polite"></p>
 
-      <div class="board-wrap">
+      <div class="board-frame" id="board-frame">
+        <div class="axis axis-cols" id="axis-cols" aria-hidden="true"></div>
+        <div class="axis axis-rows" id="axis-rows" aria-hidden="true"></div>
         <div class="board" id="board">
           <div class="cells" id="cells" role="grid" aria-label="Cave grid"></div>
           <svg class="overlay" id="overlay" aria-hidden="true" focusable="false"></svg>
         </div>
       </div>
 
-      <ul class="legend" aria-label="Legend">
-        <li><span class="swatch sw-undiscovered" aria-hidden="true"></span>Undiscovered</li>
-        <li><span class="swatch sw-frontier" aria-hidden="true" id="legend-frontier-mark">Q</span><span id="legend-frontier">Discovered, in the queue</span></li>
-        <li><span class="swatch sw-current" aria-hidden="true">▶</span>Current cell</li>
-        <li><span class="swatch sw-processed" aria-hidden="true">✓</span>Processed</li>
-        <li><span class="swatch sw-path" aria-hidden="true">1</span>Final path (move number)</li>
-        <li><span class="swatch sw-hazard" aria-hidden="true">🕳️</span>Hazard: pit or Wumpus</li>
-        <li><span class="swatch sw-order" aria-hidden="true">#2</span>Discovery order</li>
-        <li><span class="swatch sw-parent" aria-hidden="true">↓</span>Direction of parent</li>
-      </ul>
-    </section>
-
-    <section class="run-panel" id="run-panel" aria-labelledby="run-heading">
-      <h2 id="run-heading" class="visually-hidden">Playback</h2>
-
-      <div class="controls">
-        <button type="button" class="btn btn-primary" id="start-btn">Start search</button>
-        <div class="transport" role="group" aria-label="Step controls">
-          <button type="button" class="btn icon-btn" id="prev-btn" aria-label="Previous step" title="Previous step (←)">
+      <div class="deck" role="group" aria-label="Playback">
+        <button type="button" class="deck-start" id="start-btn">Start</button>
+        <div class="deck-transport">
+          <button type="button" class="deck-btn" id="prev-btn" aria-label="Previous step" title="Previous step (←)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
           </button>
-          <button type="button" class="btn icon-btn" id="play-btn" aria-label="Play" title="Play or pause (Space)">
+          <button type="button" class="deck-btn deck-play" id="play-btn" aria-label="Play" title="Play or pause (Space)">
             <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-play"><path d="M7 4v16l13-8z"/></svg>
             <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-pause"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
           </button>
-          <button type="button" class="btn icon-btn" id="next-btn" aria-label="Next step" title="Next step (→)">
+          <button type="button" class="deck-btn" id="next-btn" aria-label="Next step" title="Next step (→)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
           </button>
         </div>
-        <button type="button" class="btn" id="reset-btn">Reset</button>
-      </div>
-
-      <div class="scrub">
-        <label for="step-range" class="scrub-label"><span id="step-count">Not started</span></label>
-        <input type="range" id="step-range" min="0" max="0" value="0" disabled>
-        <label class="speed">
-          <span>Speed</span>
-          <input type="range" id="speed-range" min="0" max="100" value="45" aria-describedby="speed-value">
-          <output id="speed-value">0.7 s per step</output>
+        <div class="deck-track">
+          <input type="range" id="step-range" min="0" max="0" value="0" disabled aria-label="Step">
+        </div>
+        <label class="deck-speed" title="Playback speed">
+          <span class="visually-hidden">Speed</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a9 9 0 0 0-7.8 13.5l1.7-1A7 7 0 1 1 19 12h2a9 9 0 0 0-9-8zm4.2 3.4-5.6 4.2a1.7 1.7 0 1 0 2.4 2.3z"/></svg>
+          <input type="range" id="speed-range" min="0" max="100" value="45" aria-label="Speed">
+          <output id="speed-value" class="visually-hidden">0.4 s per step</output>
         </label>
+        <button type="button" class="deck-btn deck-reset" id="reset-btn" aria-label="Reset" title="Reset (R)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+        </button>
       </div>
 
-      <div class="structure" aria-labelledby="structure-heading">
-        <div class="panel-head">
-          <h3 id="structure-heading">Queue</h3>
-          <p class="structure-hint" id="structure-hint">First in, first out</p>
-        </div>
-        <div class="structure-body" id="structure-body"></div>
+      <ul class="legend" aria-label="Legend">
+        <li><span class="sw sw-frontier" aria-hidden="true"></span><span id="legend-frontier">In the queue</span></li>
+        <li><span class="sw sw-current" aria-hidden="true"></span>Current</li>
+        <li><span class="sw sw-processed" aria-hidden="true">✓</span>Processed</li>
+        <li><span class="sw sw-path" aria-hidden="true"></span>Route</li>
+        <li><span class="sw sw-order" aria-hidden="true">3</span>Discovery order</li>
+      </ul>
+    </section>
+
+    <section class="sheet" aria-label="Current step">
+      <div class="step-head">
+        <span class="step-count" id="step-index">Ready</span>
+        <span class="step-kind" id="step-kind"></span>
+      </div>
+      <h2 class="step-title" id="step-title">Press Start to watch BFS search the cave</h2>
+      <p class="step-message" id="step-message" aria-live="polite"></p>
+
+      <div class="verdict" id="verdict" hidden>
+        <strong id="verdict-value"></strong>
+        <span id="verdict-note"></span>
       </div>
 
-      <div class="explain" aria-labelledby="explain-heading">
-        <div class="panel-head">
-          <h3 id="explain-heading">This step</h3>
-          <span class="step-kind" id="step-kind"></span>
-        </div>
-        <p class="step-title" id="step-title">Ready when you are</p>
-        <p class="step-message" id="step-message" aria-live="polite">
-          Choose BFS or DFS, then press Start search. You can edit the map at any time; an edit clears the current run.
-        </p>
+      <div class="tape-block">
+        <h3 class="block-label" id="structure-heading">Queue</h3>
+        <div class="tape" id="structure-body"></div>
       </div>
 
-      <div class="pseudo" aria-labelledby="pseudo-heading">
-        <div class="panel-head">
-          <h3 id="pseudo-heading">Pseudocode</h3>
-          <span class="structure-hint">Highlighted line runs in this step</span>
-        </div>
+      <div class="code-block">
+        <h3 class="block-label">Pseudocode</h3>
         <ol class="code" id="pseudocode"></ol>
       </div>
-    </section>
 
-    <section class="results" aria-labelledby="results-heading">
-      <h2 id="results-heading" class="visually-hidden">Results</h2>
-      <div class="verdict" id="verdict">
-        <span class="verdict-label">Result</span>
-        <strong class="verdict-value" id="verdict-value">Not run yet</strong>
-        <span class="verdict-note" id="verdict-note">Press Start search to explore the cave.</span>
-      </div>
-      <dl class="counters">
+      <dl class="stats">
         <div><dt>Discovered</dt><dd id="c-discovered">0</dd></div>
         <div><dt>Processed</dt><dd id="c-processed">0</dd></div>
-        <div><dt>Frontier now</dt><dd id="c-frontier">0</dd></div>
-        <div><dt>Largest frontier</dt><dd id="c-max">0</dd></div>
+        <div><dt id="c-frontier-label">In queue</dt><dd id="c-frontier">0</dd></div>
         <div><dt>Neighbour checks</dt><dd id="c-checks">0</dd></div>
-        <div><dt>Path length</dt><dd id="c-moves">–</dd></div>
+        <div><dt>Route</dt><dd id="c-moves">–</dd></div>
       </dl>
-    </section>
-
-    <section class="learn" aria-labelledby="learn-heading">
-      <h2 id="learn-heading">How the search works</h2>
-
-      <article class="card card-graph">
-        <h3>The grid is a graph</h3>
-        <p>
-          Every safe cell is a <strong>vertex</strong>. Two safe cells that share a side are joined by an
-          <strong>edge</strong>, so each legal move up, right, down or left is one edge and every move costs the same.
-          Pits and the Wumpus are not vertices at all. Each vertex keeps an <strong>adjacency list</strong> of its
-          neighbours in the fixed order up, right, down, left, so every run is reproducible.
-        </p>
-        <p class="graph-size" id="graph-size"></p>
-        <div class="adjacency" id="adjacency" tabindex="0" aria-label="Adjacency list of the current map"></div>
-      </article>
-
-      <article class="card card-order">
-        <h3>Search order is not the route</h3>
-        <p>
-          The numbers on the cells show the order in which cells were <em>discovered</em>. A search usually
-          discovers many cells that never make it onto the final route. The route is rebuilt afterwards:
-          BFS follows parent links back from the gold, and DFS reads its stack from bottom to top.
-        </p>
-        <div class="order-compare" id="order-compare">
-          <p class="muted">Run a search to compare its discovery order with the route it returns.</p>
-        </div>
-      </article>
-
-      <article class="card card-cost">
-        <h3>Cost: O(V + E) time, O(V) space</h3>
-        <p>
-          <strong>Time.</strong> Each vertex is discovered at most once, so it enters the queue or stack at most once:
-          O(V). Each adjacency list is scanned once, and the lists hold 2E entries in total: O(E). Together, O(V + E).
-        </p>
-        <p>
-          <strong>Space.</strong> The discovered and parent arrays have one entry per vertex, and the queue or stack can
-          never hold more than V cells, so the extra memory is O(V).
-        </p>
-        <p>
-          On an n × n grid V ≤ n² and E &lt; 2n², so both searches run in O(n²).
-          The counts below are operations, not seconds. Changing the playback speed does not change them.
-        </p>
-        <dl class="cost-table" id="cost-table"></dl>
-      </article>
-
-      <article class="card card-compare">
-        <h3>BFS or DFS?</h3>
-        <table class="compare">
-          <thead><tr><th scope="col"></th><th scope="col">BFS</th><th scope="col">DFS</th></tr></thead>
-          <tbody>
-            <tr><th scope="row">Data structure</th><td>Queue (FIFO)</td><td>Stack (LIFO)</td></tr>
-            <tr><th scope="row">Explores</th><td>Ring by ring, nearest cells first</td><td>One corridor as deep as it goes</td></tr>
-            <tr><th scope="row">Path returned</th><td>Shortest in moves</td><td>Valid, often longer</td></tr>
-            <tr><th scope="row">Backtracks</th><td>No</td><td>Yes, pops dead ends</td></tr>
-            <tr><th scope="row">Time</th><td>O(V + E)</td><td>O(V + E)</td></tr>
-            <tr><th scope="row">Extra space</th><td>O(V)</td><td>O(V)</td></tr>
-          </tbody>
-        </table>
-      </article>
     </section>
   </main>
 
+  <section class="notes" aria-labelledby="notes-heading">
+    <div class="notes-head">
+      <h2 id="notes-heading">How it works</h2>
+      <div class="tabs" role="tablist" aria-label="Topics">
+        <button type="button" role="tab" class="tab" id="tab-graph" aria-controls="panel-graph" aria-selected="true">The graph</button>
+        <button type="button" role="tab" class="tab" id="tab-order" aria-controls="panel-order" aria-selected="false" tabindex="-1">Search order vs route</button>
+        <button type="button" role="tab" class="tab" id="tab-cost" aria-controls="panel-cost" aria-selected="false" tabindex="-1">Cost</button>
+        <button type="button" role="tab" class="tab" id="tab-compare" aria-controls="panel-compare" aria-selected="false" tabindex="-1">BFS vs DFS</button>
+      </div>
+    </div>
+
+    <div class="panel" role="tabpanel" id="panel-graph" aria-labelledby="tab-graph">
+      <div class="panel-text">
+        <p>
+          Every safe cell is a <strong>vertex</strong>. Two safe cells that share a side are joined by an
+          <strong>edge</strong>, so each legal move is one edge and every move costs the same.
+          Pits and the Wumpus are not vertices at all.
+        </p>
+        <p>
+          Each vertex stores an <strong>adjacency list</strong> of its neighbours in the fixed order
+          up, right, down, left. Both searches read these lists in that order, so every run is reproducible.
+        </p>
+        <p class="figure" id="graph-size"></p>
+      </div>
+      <div class="adjacency" id="adjacency" tabindex="0" aria-label="Adjacency list of the current map"></div>
+    </div>
+
+    <div class="panel" role="tabpanel" id="panel-order" aria-labelledby="tab-order" hidden>
+      <div class="panel-text">
+        <p>
+          The small numbers on the board show the order in which cells were <em>discovered</em>.
+          A search usually discovers many cells that never make it onto the final route.
+        </p>
+        <p>
+          The route is rebuilt at the end: BFS follows parent links back from the gold, and DFS reads
+          its stack from bottom to top. The faint lines on the board are those parent links.
+        </p>
+      </div>
+      <div class="order-compare" id="order-compare"></div>
+    </div>
+
+    <div class="panel" role="tabpanel" id="panel-cost" aria-labelledby="tab-cost" hidden>
+      <div class="panel-text">
+        <p>
+          <strong>Time: O(V + E).</strong> A vertex is discovered at most once, so it enters the queue or stack at most
+          once. Each adjacency list is scanned once, and together the lists hold 2E entries.
+        </p>
+        <p>
+          <strong>Space: O(V).</strong> The discovered and parent arrays have one entry per vertex, and the queue or
+          stack never holds more than V cells.
+        </p>
+        <p class="muted">
+          These are operation counts, not seconds. The playback speed does not change them.
+        </p>
+      </div>
+      <dl class="cost-table" id="cost-table"></dl>
+    </div>
+
+    <div class="panel" role="tabpanel" id="panel-compare" aria-labelledby="tab-compare" hidden>
+      <table class="compare">
+        <thead><tr><th scope="col"><span class="visually-hidden">Property</span></th><th scope="col">BFS</th><th scope="col">DFS</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Frontier</th><td>Queue, first in first out</td><td>Stack, last in first out</td></tr>
+          <tr><th scope="row">Explores</th><td>Ring by ring, nearest cells first</td><td>One corridor as deep as it goes</td></tr>
+          <tr><th scope="row">Route returned</th><td>Shortest in moves</td><td>Valid, often longer</td></tr>
+          <tr><th scope="row">Backtracks</th><td>No</td><td>Yes, pops dead ends</td></tr>
+          <tr><th scope="row">Time</th><td>O(V + E)</td><td>O(V + E)</td></tr>
+          <tr><th scope="row">Extra space</th><td>O(V)</td><td>O(V)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <footer class="colophon">
     <p>
-      Wumpus Navigator is inspired by the Wumpus World of Russell and Norvig. Here the whole cave is visible,
-      so there is no hidden-world reasoning; the subject is graph traversal.
-      Keys: Space plays or pauses, ← and → step, R resets.
+      Inspired by the Wumpus World of Russell and Norvig. The whole cave is visible here, so the subject is
+      graph traversal rather than hidden-world reasoning. Keys: Space plays or pauses, ← and → step, R resets.
     </p>
   </footer>
 
