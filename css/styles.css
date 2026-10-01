@@ -37,7 +37,7 @@
   --wrap: 1240px;
   --gutter: clamp(1rem, 3vw, 2rem);
   /* Board edge length: fits the viewport height on laptops, never tiny. */
-  --board: min(100%, max(22rem, 100vh - 19.5rem));
+  --board: min(100%, max(22rem, 100vh - 21rem));
 }
 
 *,
@@ -176,18 +176,17 @@ button:disabled {
   align-items: start;
 }
 
-/* Everything in the board column shares the board's width and left edge. */
+/* Everything in the board column shares the board's left and right edges.
+   The row numbers hang out into the page margin so they do not push the
+   board out of line with the toolbar, deck and legend. */
 .board-col > * {
   width: var(--board);
 }
 
-/* Items that sit under the board itself skip the row-number gutter. */
-.board-col > .toolbar,
-.board-col > .notice,
-.board-col > .deck,
-.board-col > .legend {
-  margin-left: 1.5rem;
-  width: calc(var(--board) - 1.5rem);
+.board-col > .board-frame {
+  --axis: 1.5rem;
+  width: calc(var(--board) + var(--axis));
+  margin-left: calc(-1 * var(--axis));
 }
 
 /* Toolbars above the board */
@@ -311,7 +310,7 @@ select:hover,
   --pad: 8px;
   --gap: 6px;
   display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1fr);
+  grid-template-columns: var(--axis, 1.5rem) minmax(0, 1fr);
   grid-template-rows: 1.4rem auto;
 }
 
@@ -1348,6 +1347,10 @@ select:hover,
 }
 
 @media (max-width: 600px) {
+  :root {
+    --gutter: 1.35rem;
+  }
+
   .top {
     padding-top: 1.1rem;
     padding-bottom: 1rem;
@@ -1376,22 +1379,18 @@ select:hover,
     display: block;
   }
 
-  .board-col > .toolbar,
-  .board-col > .notice,
-  .board-col > .deck,
-  .board-col > .legend {
-    margin-left: 0;
+  .board-col > * {
     width: 100%;
   }
 
   .board-col > .board-frame {
-    width: 100%;
+    --axis: 1.1rem;
+    width: calc(100% + var(--axis));
   }
 
   .board-frame {
     --pad: 5px;
     --gap: 4px;
-    grid-template-columns: 1rem minmax(0, 1fr);
     grid-template-rows: 1.1rem auto;
   }
 
@@ -1405,13 +1404,13 @@ select:hover,
 
   select,
   .chip-btn {
-    padding: 0 0.75rem;
+    padding: 0 0.65rem;
     font-size: 0.85rem;
   }
 
   select {
-    padding-right: 1.8rem;
-    background-position: right 0.7rem center;
+    padding-right: 1.65rem;
+    background-position: right 0.6rem center;
   }
 
   .notice {
