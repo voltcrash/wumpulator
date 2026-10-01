@@ -36,8 +36,10 @@
 
   --wrap: 1240px;
   --gutter: clamp(1rem, 3vw, 2rem);
-  /* Board edge length: fits the viewport height on laptops, never tiny. */
-  --board: min(100%, max(22rem, 100vh - 21rem));
+  /* Board edge length: fits the viewport height on laptops, never tiny.
+     The board column is exactly this wide, so no empty gutter opens up
+     beside a height-limited board. */
+  --board: min(37rem, max(22rem, 100vh - 22.5rem));
 }
 
 *,
@@ -171,8 +173,8 @@ button:disabled {
   margin: 0 auto;
   padding: 0 var(--gutter);
   display: grid;
-  grid-template-columns: minmax(0, 37rem) minmax(0, 1fr);
-  gap: 2.5rem;
+  grid-template-columns: var(--board) minmax(0, 1fr);
+  gap: 2.25rem;
   align-items: start;
 }
 
@@ -292,9 +294,9 @@ select:hover,
 }
 
 .notice {
-  min-height: 1.4rem;
-  margin-top: 0.55rem;
-  margin-bottom: 0.35rem;
+  min-height: 1.3rem;
+  margin-top: 0.45rem;
+  margin-bottom: 0.15rem;
   font-size: 0.875rem;
   color: var(--muted);
 }
@@ -753,12 +755,12 @@ select:hover,
 
 .legend {
   list-style: none;
-  margin-top: 0.9rem;
+  margin-top: 0.85rem;
   margin-bottom: 0;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.15rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr));
+  gap: 0.45rem 0.75rem;
   font-size: 0.82rem;
   color: var(--muted);
 }
@@ -810,14 +812,22 @@ select:hover,
 
 .sheet {
   min-width: 0;
-  /* toolbar + notice + column numbers, so the sheet lines up with the board */
-  margin-top: calc(2.25rem + 0.55rem + 1.4rem + 0.35rem + 1.4rem);
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 20px;
-  padding: 1.75rem 1.9rem 1.5rem;
-  display: grid;
-  gap: 1.5rem;
+  padding: 1.4rem 1.6rem 1.3rem;
+}
+
+.sheet > * + * {
+  margin-top: 1.25rem;
+}
+
+.sheet > .step-title {
+  margin-top: 0.35rem;
+}
+
+.sheet > .step-message {
+  margin-top: 0.5rem;
 }
 
 .step-head {
@@ -825,7 +835,6 @@ select:hover,
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: -0.9rem;
 }
 
 .step-count {
@@ -876,7 +885,6 @@ select:hover,
   line-height: 1.2;
   letter-spacing: -0.01em;
   text-wrap: balance;
-  margin-bottom: -0.85rem;
 }
 
 .step-message {
@@ -918,7 +926,7 @@ select:hover,
 .block-label {
   font-size: 0.875rem;
   font-weight: 700;
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.45rem;
 }
 
 /* Queue / stack tape */
@@ -928,7 +936,6 @@ select:hover,
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem 0.5rem;
-  min-height: 2.2rem;
 }
 
 .tape-items {
@@ -1321,23 +1328,20 @@ select:hover,
 
 /* ---- Responsive -------------------------------------------------------- */
 
-@media (max-width: 1000px) {
-  :root {
-    --board: min(100%, 40rem);
-  }
-
+/* One column: the board, its controls and the step sheet share one width. */
+@media (max-width: 1060px) {
   .stage {
     grid-template-columns: minmax(0, 1fr);
-    gap: 2rem;
+    max-width: calc(36rem + 2 * var(--gutter));
+    gap: 1.75rem;
   }
 
-  .board-col {
-    display: grid;
-    justify-content: center;
+  .board-col > * {
+    width: 100%;
   }
 
-  .sheet {
-    margin-top: 0;
+  .board-col > .board-frame {
+    width: calc(100% + var(--axis));
   }
 
   .panel {
@@ -1375,17 +1379,8 @@ select:hover,
     padding: 0.4rem 0.75rem;
   }
 
-  .board-col {
-    display: block;
-  }
-
-  .board-col > * {
-    width: 100%;
-  }
-
   .board-col > .board-frame {
     --axis: 1.1rem;
-    width: calc(100% + var(--axis));
   }
 
   .board-frame {
