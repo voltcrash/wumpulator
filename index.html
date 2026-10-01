@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wumpus Navigator: BFS and DFS on a grid graph</title>
+  <meta name="description" content="A Wumpus World-inspired simulator that explains breadth-first and depth-first search step by step.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#run-panel">Skip to playback controls</a>
+
+  <header class="masthead">
+    <div class="masthead-text">
+      <h1>Wumpus Navigator</h1>
+      <p class="lede">
+        Watch breadth-first and depth-first search find a safe way to the gold in a
+        Wumpus World&ndash;inspired cave. The whole map is revealed; pits and the Wumpus are walls.
+      </p>
+    </div>
+    <div class="algo-switch" role="radiogroup" aria-label="Search algorithm">
+      <button type="button" role="radio" class="algo-option" data-algo="bfs" aria-checked="true">
+        <span class="algo-short">BFS</span>
+        <span class="algo-long">Breadth-first, uses a queue</span>
+      </button>
+      <button type="button" role="radio" class="algo-option" data-algo="dfs" aria-checked="false">
+        <span class="algo-short">DFS</span>
+        <span class="algo-long">Depth-first, uses a stack</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="stage" aria-labelledby="map-heading">
+      <div class="stage-head">
+        <h2 id="map-heading">Cave map</h2>
+        <div class="map-meta">
+          <label class="size-picker">
+            Grid size
+            <select id="size-select">
+              <option value="4">4 × 4</option>
+              <option value="5">5 × 5</option>
+              <option value="6">6 × 6</option>
+              <option value="7">7 × 7</option>
+              <option value="8">8 × 8</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="editor" aria-label="Map editor">
+        <div class="tool-group" role="radiogroup" aria-label="Editing tool">
+          <span class="group-label" id="tool-label">Place</span>
+          <button type="button" role="radio" class="tool" data-tool="start" aria-checked="false"><span class="tool-icon" aria-hidden="true">🧭</span>Start</button>
+          <button type="button" role="radio" class="tool" data-tool="gold" aria-checked="false"><span class="tool-icon" aria-hidden="true">💰</span>Gold</button>
+          <button type="button" role="radio" class="tool" data-tool="pit" aria-checked="true"><span class="tool-icon" aria-hidden="true">🕳️</span>Pit</button>
+          <button type="button" role="radio" class="tool" data-tool="wumpus" aria-checked="false"><span class="tool-icon" aria-hidden="true">👹</span>Wumpus</button>
+          <button type="button" role="radio" class="tool" data-tool="erase" aria-checked="false"><span class="tool-icon" aria-hidden="true">⌫</span>Erase pit</button>
+        </div>
+        <div class="preset-group">
+          <span class="group-label">Load</span>
+          <button type="button" class="preset" data-example="classic">Classic 4×4</button>
+          <button type="button" class="preset" data-example="detour">DFS detour</button>
+          <button type="button" class="preset" data-example="adjacent">Gold next door</button>
+          <button type="button" class="preset" data-example="blocked">No path</button>
+          <button type="button" class="preset" id="random-btn">Random map</button>
+        </div>
+      </div>
+
+      <p class="notice" id="notice" role="status" aria-live="polite"></p>
+
+      <div class="board-wrap">
+        <div class="board" id="board">
+          <div class="cells" id="cells" role="grid" aria-label="Cave grid"></div>
+          <svg class="overlay" id="overlay" aria-hidden="true" focusable="false"></svg>
+        </div>
+      </div>
+
+      <ul class="legend" aria-label="Legend">
+        <li><span class="swatch sw-undiscovered" aria-hidden="true"></span>Undiscovered</li>
+        <li><span class="swatch sw-frontier" aria-hidden="true" id="legend-frontier-mark">Q</span><span id="legend-frontier">Discovered, in the queue</span></li>
+        <li><span class="swatch sw-current" aria-hidden="true">▶</span>Current cell</li>
+        <li><span class="swatch sw-processed" aria-hidden="true">✓</span>Processed</li>
+        <li><span class="swatch sw-path" aria-hidden="true">1</span>Final path (move number)</li>
+        <li><span class="swatch sw-hazard" aria-hidden="true">🕳️</span>Hazard: pit or Wumpus</li>
+        <li><span class="swatch sw-order" aria-hidden="true">#2</span>Discovery order</li>
+        <li><span class="swatch sw-parent" aria-hidden="true">↓</span>Direction of parent</li>
+      </ul>
+    </section>
+
+    <section class="run-panel" id="run-panel" aria-labelledby="run-heading">
+      <h2 id="run-heading" class="visually-hidden">Playback</h2>
+
+      <div class="controls">
+        <button type="button" class="btn btn-primary" id="start-btn">Start search</button>
+        <div class="transport" role="group" aria-label="Step controls">
+          <button type="button" class="btn icon-btn" id="prev-btn" aria-label="Previous step" title="Previous step (←)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
+          </button>
+          <button type="button" class="btn icon-btn" id="play-btn" aria-label="Play" title="Play or pause (Space)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-play"><path d="M7 4v16l13-8z"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-pause"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+          </button>
+          <button type="button" class="btn icon-btn" id="next-btn" aria-label="Next step" title="Next step (→)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
+          </button>
+        </div>
+        <button type="button" class="btn" id="reset-btn">Reset</button>
+      </div>
+
+      <div class="scrub">
+        <label for="step-range" class="scrub-label"><span id="step-count">Not started</span></label>
+        <input type="range" id="step-range" min="0" max="0" value="0" disabled>
+        <label class="speed">
+          <span>Speed</span>
+          <input type="range" id="speed-range" min="0" max="100" value="45" aria-describedby="speed-value">
+          <output id="speed-value">0.7 s per step</output>
+        </label>
+      </div>
+
+      <div class="structure" aria-labelledby="structure-heading">
+        <div class="panel-head">
+          <h3 id="structure-heading">Queue</h3>
+          <p class="structure-hint" id="structure-hint">First in, first out</p>
+        </div>
+        <div class="structure-body" id="structure-body"></div>
+      </div>
+
+      <div class="explain" aria-labelledby="explain-heading">
+        <div class="panel-head">
+          <h3 id="explain-heading">This step</h3>
+          <span class="step-kind" id="step-kind"></span>
+        </div>
+        <p class="step-title" id="step-title">Ready when you are</p>
+        <p class="step-message" id="step-message" aria-live="polite">
+          Choose BFS or DFS, then press Start search. You can edit the map at any time; an edit clears the current run.
+        </p>
+      </div>
+
+      <div class="pseudo" aria-labelledby="pseudo-heading">
+        <div class="panel-head">
+          <h3 id="pseudo-heading">Pseudocode</h3>
+          <span class="structure-hint">Highlighted line runs in this step</span>
+        </div>
+        <ol class="code" id="pseudocode"></ol>
+      </div>
+    </section>
+
+    <section class="results" aria-labelledby="results-heading">
+      <h2 id="results-heading" class="visually-hidden">Results</h2>
+      <div class="verdict" id="verdict">
+        <span class="verdict-label">Result</span>
+        <strong class="verdict-value" id="verdict-value">Not run yet</strong>
+        <span class="verdict-note" id="verdict-note">Press Start search to explore the cave.</span>
+      </div>
+      <dl class="counters">
+        <div><dt>Discovered</dt><dd id="c-discovered">0</dd></div>
+        <div><dt>Processed</dt><dd id="c-processed">0</dd></div>
+        <div><dt>Frontier now</dt><dd id="c-frontier">0</dd></div>
+        <div><dt>Largest frontier</dt><dd id="c-max">0</dd></div>
+        <div><dt>Neighbour checks</dt><dd id="c-checks">0</dd></div>
+        <div><dt>Path length</dt><dd id="c-moves">–</dd></div>
+      </dl>
+    </section>
+
+    <section class="learn" aria-labelledby="learn-heading">
+      <h2 id="learn-heading">How the search works</h2>
+
+      <article class="card card-graph">
+        <h3>The grid is a graph</h3>
+        <p>
+          Every safe cell is a <strong>vertex</strong>. Two safe cells that share a side are joined by an
+          <strong>edge</strong>, so each legal move up, right, down or left is one edge and every move costs the same.
+          Pits and the Wumpus are not vertices at all. Each vertex keeps an <strong>adjacency list</strong> of its
+          neighbours in the fixed order up, right, down, left, so every run is reproducible.
+        </p>
+        <p class="graph-size" id="graph-size"></p>
+        <div class="adjacency" id="adjacency" tabindex="0" aria-label="Adjacency list of the current map"></div>
+      </article>
+
+      <article class="card card-order">
+        <h3>Search order is not the route</h3>
+        <p>
+          The numbers on the cells show the order in which cells were <em>discovered</em>. A search usually
+          discovers many cells that never make it onto the final route. The route is rebuilt afterwards:
+          BFS follows parent links back from the gold, and DFS reads its stack from bottom to top.
+        </p>
+        <div class="order-compare" id="order-compare">
+          <p class="muted">Run a search to compare its discovery order with the route it returns.</p>
+        </div>
+      </article>
+
+      <article class="card card-cost">
+        <h3>Cost: O(V + E) time, O(V) space</h3>
+        <p>
+          <strong>Time.</strong> Each vertex is discovered at most once, so it enters the queue or stack at most once:
+          O(V). Each adjacency list is scanned once, and the lists hold 2E entries in total: O(E). Together, O(V + E).
+        </p>
+        <p>
+          <strong>Space.</strong> The discovered and parent arrays have one entry per vertex, and the queue or stack can
+          never hold more than V cells, so the extra memory is O(V).
+        </p>
+        <p>
+          On an n × n grid V ≤ n² and E &lt; 2n², so both searches run in O(n²).
+          The counts below are operations, not seconds. Changing the playback speed does not change them.
+        </p>
+        <dl class="cost-table" id="cost-table"></dl>
+      </article>
+
+      <article class="card card-compare">
+        <h3>BFS or DFS?</h3>
+        <table class="compare">
+          <thead><tr><th scope="col"></th><th scope="col">BFS</th><th scope="col">DFS</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Data structure</th><td>Queue (FIFO)</td><td>Stack (LIFO)</td></tr>
+            <tr><th scope="row">Explores</th><td>Ring by ring, nearest cells first</td><td>One corridor as deep as it goes</td></tr>
+            <tr><th scope="row">Path returned</th><td>Shortest in moves</td><td>Valid, often longer</td></tr>
+            <tr><th scope="row">Backtracks</th><td>No</td><td>Yes, pops dead ends</td></tr>
+            <tr><th scope="row">Time</th><td>O(V + E)</td><td>O(V + E)</td></tr>
+            <tr><th scope="row">Extra space</th><td>O(V)</td><td>O(V)</td></tr>
+          </tbody>
+        </table>
+      </article>
+    </section>
+  </main>
+
+  <footer class="colophon">
+    <p>
+      Wumpus Navigator is inspired by the Wumpus World of Russell and Norvig. Here the whole cave is visible,
+      so there is no hidden-world reasoning; the subject is graph traversal.
+      Keys: Space plays or pauses, ← and → step, R resets.
+    </p>
+  </footer>
+
+  <script src="js/grid.js"></script>
+  <script src="js/algorithms.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
