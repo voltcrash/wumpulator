@@ -28,12 +28,12 @@
   const KIND_TEXT = {
     init: 'Initialise',
     dequeue: 'Dequeue',
-    inspect: 'Inspect stack',
+    inspect: 'Inspect top',
     discover: 'Discover',
     skip: 'Already seen',
     backtrack: 'Backtrack',
-    found: 'Finished',
-    nopath: 'Finished',
+    found: 'Gold found',
+    nopath: 'No path',
   };
 
   function el(tag, className, text) {
@@ -49,14 +49,8 @@
     return node;
   }
 
-  function parentArrow(size, i, parent) {
-    if (parent < 0) return '';
-    const a = Grid.toRC(size, i);
-    const b = Grid.toRC(size, parent);
-    if (b.r < a.r) return '↑';
-    if (b.r > a.r) return '↓';
-    if (b.c > a.c) return '→';
-    return '←';
+  function moves(n) {
+    return n + (n === 1 ? ' move' : ' moves');
   }
 
   function createRenderer(els) {
@@ -66,8 +60,7 @@
 
     function buildCells(size) {
       els.cells.textContent = '';
-      els.cells.style.setProperty('--n', size);
-      els.board.style.setProperty('--n', size);
+      els.boardFrame.style.setProperty('--n', size);
       cellNodes = [];
       for (let r = 0; r < size; r++) {
         const row = el('div', 'row');
@@ -81,70 +74,65 @@
           const parts = {
             root: btn,
             order: el('span', 'cell-order'),
-            badge: el('span', 'cell-badge'),
             item: el('span', 'cell-item'),
-            coord: el('span', 'cell-coord', Grid.label(size, i)),
-            parent: el('span', 'cell-parent'),
-            step: el('span', 'cell-step'),
           };
-          btn.append(parts.order, parts.badge, parts.item, parts.coord, parts.parent, parts.step);
+          btn.append(parts.order, parts.item);
           row.appendChild(btn);
           cellNodes.push(parts);
         }
         els.cells.appendChild(row);
       }
+
+      els.axisCols.textContent = '';
+      els.axisRows.textContent = '';
+      for (let k = 0; k < size; k++) {
+        els.axisCols.appendChild(el('span', '', String(k)));
+        els.axisRows.appendChild(el('span', '', String(k)));
+      }
+
       builtSize = size;
       lastOverlayKey = '';
     }
 
-    function renderBoard(map, snapshot, algorithmId) {
+    function renderBoard(map, snapshot, editing) {
       const size = map.size;
       if (builtSize !== size) buildCells(size);
-      const pathIndex = new Map();
-      if (snapshot && snapshot.path) snapshot.path.forEach((v, k) => pathIndex.set(v, k));
-      const frontierMark = algorithmId === 'dfs' ? 'S' : 'Q';
+      const onRoute = new Set(snapshot && snapshot.path ? snapshot.path : []);
+      els.boardFrame.classList.toggle('is-editing', !!editing);
 
       for (let i = 0; i < size * size; i++) {
         const parts = cellNodes[i];
         const type = Grid.cellType(map, i);
         const hazard = type === 'pit' || type === 'wumpus';
         const state = snapshot && !hazard ? snapshot.states[i] : 'undiscovered';
-        const onPath = pathIndex.has(i);
-        const isNeighbour = snapshot && snapshot.neighbour === i;
+        const isNeighbour = snapshot && snapshot.neighbour === i && state !== 'current';
 
         parts.root.className =
           'cell type-' + type + ' state-' + state +
-          (hazard ? ' is-hazard' : '') +
-          (onPath ? ' on-path' : '') +
+          (onRoute.has(i) ? ' on-route' : '') +
           (isNeighbour ? ' is-neighbour' : '');
 
-        parts.item.textContent = '';
-        if (ITEMS[type]) {
-          parts.item.append(el('span', 'item-icon', ITEMS[type].icon), el('span', 'item-name', ITEMS[type].name));
-        }
+        parts.item.textContent = ITEMS[type] ? ITEMS[type].icon : '';
 
         const order = snapshot ? snapshot.order[i] : -1;
-        parts.order.textContent = order >= 0 ? '#' + (order + 1) : '';
-
-        let badge = '';
-        if (state === 'frontier') badge = frontierMark;
-        else if (state === 'current') badge = '▶';
-        else if (state === 'processed') badge = '✓';
-        parts.badge.textContent = badge;
-
-        parts.parent.textContent = snapshot ? parentArrow(size, i, snapshot.parent[i]) : '';
-        parts.step.textContent = onPath && pathIndex.get(i) > 0 ? String(pathIndex.get(i)) : '';
+        parts.order.textContent = order >= 0 ? String(order + 1) : '';
 
         const desc = [Grid.label(size, i)];
         if (type !== 'empty') desc.push(ITEMS[type].name);
         if (hazard) desc.push('impassable');
         else if (snapshot) desc.push(STATE_TEXT[state]);
-        if (order >= 0) desc.push('discovered #' + (order + 1));
-        if (onPath) desc.push('path move ' + pathIndex.get(i));
+        if (order >= 0) desc.push('discovered ' + ordinal(order + 1));
+        if (onRoute.has(i)) desc.push('on the route');
         parts.root.setAttribute('aria-label', desc.join(', '));
       }
 
       renderOverlay(map, snapshot);
+    }
+
+    function ordinal(n) {
+      const s = ['th', 'st', 'nd', 'rd'];
+      const v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
     }
 
     function centre(size, i) {
@@ -158,14 +146,14 @@
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const len = Math.hypot(dx, dy) || 1;
-      const trim = 0.22;
+      const trim = 0.24;
       return svg('line', {
         class: className,
         x1: a.x + (dx / len) * trim,
         y1: a.y + (dy / len) * trim,
         x2: b.x - (dx / len) * trim,
         y2: b.y - (dy / len) * trim,
-        'marker-end': 'url(#arrowhead-' + className + ')',
+        'marker-end': 'url(#head-' + className + ')',
       });
     }
 
@@ -181,14 +169,24 @@
       const defs = svg('defs', {});
       for (const name of ['edge-new', 'edge-old', 'edge-back']) {
         const marker = svg('marker', {
-          id: 'arrowhead-' + name, viewBox: '0 0 10 10', refX: '7', refY: '5',
-          markerWidth: '3.2', markerHeight: '3.2', orient: 'auto-start-reverse',
+          id: 'head-' + name, viewBox: '0 0 10 10', refX: '7', refY: '5',
+          markerWidth: '3', markerHeight: '3', orient: 'auto-start-reverse',
         });
-        marker.appendChild(svg('path', { d: 'M0,0 L10,5 L0,10 z', class: 'head-' + name }));
+        marker.appendChild(svg('path', { d: 'M0,0 L10,5 L0,10 z', class: 'fill-' + name }));
         defs.appendChild(marker);
       }
       root.appendChild(defs);
       if (!snapshot) return;
+
+      // Faint search tree: one line from every discovered cell to its parent.
+      const tree = svg('g', { class: 'tree' });
+      snapshot.parent.forEach((p, v) => {
+        if (p < 0) return;
+        const a = centre(size, p);
+        const b = centre(size, v);
+        tree.appendChild(svg('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y }));
+      });
+      root.appendChild(tree);
 
       if (snapshot.path && snapshot.path.length > 1) {
         const points = snapshot.path.map((v) => {
@@ -211,50 +209,48 @@
     function renderStructure(map, snapshot, algorithmId) {
       const isQueue = algorithmId !== 'dfs';
       els.structureHeading.textContent = isQueue ? 'Queue' : 'Stack';
-      els.structureHint.textContent = isQueue
-        ? 'First in, first out: dequeue at the front, enqueue at the rear'
-        : 'Last in, first out: push and pop at the top';
-      els.legendFrontier.textContent = isQueue ? 'Discovered, in the queue' : 'Discovered, on the stack';
-      els.legendFrontierMark.textContent = isQueue ? 'Q' : 'S';
-      els.structureBody.className = 'structure-body ' + (isQueue ? 'is-queue' : 'is-stack');
+      els.legendFrontier.textContent = isQueue ? 'In the queue' : 'On the stack';
+      els.frontierLabel.textContent = isQueue ? 'In queue' : 'On stack';
 
       const body = els.structureBody;
       body.textContent = '';
+      body.className = 'tape ' + (isQueue ? 'is-queue' : 'is-stack');
+
       if (!snapshot) {
-        body.appendChild(el('p', 'structure-empty', isQueue
-          ? 'The queue appears here when the search starts.'
-          : 'The stack appears here when the search starts.'));
+        body.appendChild(el('p', 'tape-empty', isQueue
+          ? 'Cells wait here in first-in, first-out order.'
+          : 'Cells pile up here; the newest is on top.'));
         return;
       }
 
-      const items = snapshot.structure.slice();
-      const list = el('ol', 'ds-list');
-      list.setAttribute('aria-label', isQueue ? 'Queue from front to rear' : 'Stack from top to bottom');
-      const ordered = isQueue ? items : items.slice().reverse();
-      const added = snapshot.kind === 'discover' ? snapshot.neighbour : -1;
-      ordered.forEach((v, k) => {
-        const li = el('li', 'ds-item');
-        if (v === added) li.classList.add('is-new');
-        if (!isQueue && k === 0) li.classList.add('is-top');
-        if (isQueue && k === 0) li.classList.add('is-front');
-        li.appendChild(el('span', 'ds-cell', Grid.label(map.size, v)));
-        let tag = '';
-        if (isQueue && k === 0) tag = 'front';
-        if (isQueue && k === ordered.length - 1) tag = tag ? 'front, rear' : 'rear';
-        if (!isQueue && k === 0) tag = 'top';
-        if (!isQueue && k === ordered.length - 1) tag = tag ? 'top, bottom' : 'bottom';
-        if (tag) li.appendChild(el('span', 'ds-tag', tag));
-        list.appendChild(li);
-      });
+      const items = snapshot.structure;
       if (!items.length) {
-        body.appendChild(el('p', 'structure-empty', isQueue ? 'Queue is empty.' : 'Stack is empty.'));
+        body.appendChild(el('p', 'tape-empty', isQueue ? 'The queue is empty.' : 'The stack is empty.'));
       } else {
+        // The end labels sit inside the list so they wrap with the cells.
+        const list = el('ol', 'tape-items');
+        list.setAttribute('aria-label', isQueue ? 'Queue from front to rear' : 'Stack from bottom to top');
+        const endLabel = (text) => {
+          const li = el('li', 'tape-end', text);
+          li.setAttribute('aria-hidden', 'true');
+          return li;
+        };
+        list.appendChild(endLabel(isQueue ? 'front' : 'bottom'));
+        const added = snapshot.kind === 'discover' ? snapshot.neighbour : -1;
+        items.forEach((v, k) => {
+          const li = el('li', 'tape-item', Grid.label(map.size, v));
+          if (v === added) li.classList.add('is-new');
+          if (isQueue && k === 0) li.classList.add('is-next');
+          if (!isQueue && k === items.length - 1) li.classList.add('is-next');
+          list.appendChild(li);
+        });
+        list.appendChild(endLabel(isQueue ? 'rear' : 'top'));
         body.appendChild(list);
       }
 
       if (snapshot.removed >= 0) {
-        const verb = snapshot.kind === 'backtrack' ? 'Just popped' : 'Just dequeued';
-        body.appendChild(el('p', 'ds-removed', verb + ': ' + Grid.label(map.size, snapshot.removed)));
+        const verb = snapshot.kind === 'backtrack' ? 'Popped' : 'Dequeued';
+        body.appendChild(el('p', 'tape-removed', verb + ' ' + Grid.label(map.size, snapshot.removed)));
       }
     }
 
@@ -264,65 +260,64 @@
       const list = els.pseudocode;
       list.textContent = '';
       lines.forEach((line, k) => {
-        const li = el('li', 'code-line' + (active.has(k + 1) ? ' is-active' : ''));
+        const on = active.has(k + 1);
+        const li = el('li', 'code-line' + (on ? ' is-active' : ''));
         li.appendChild(el('code', '', line.text));
         if (line.note) li.appendChild(el('span', 'code-note', line.note));
-        if (active.has(k + 1)) li.setAttribute('aria-current', 'step');
+        if (on) li.setAttribute('aria-current', 'step');
         list.appendChild(li);
       });
     }
 
-    function renderExplanation(snapshot, idleMessage) {
+    function renderStep(snapshot, state, algorithmId) {
+      const name = Algorithms.ALGORITHMS[algorithmId].short;
       if (!snapshot) {
+        els.stepIndex.textContent = 'Ready';
         els.stepKind.textContent = '';
         els.stepKind.className = 'step-kind';
-        els.stepTitle.textContent = 'Ready when you are';
-        els.stepMessage.textContent = idleMessage;
+        els.stepTitle.textContent = 'Press Start to watch ' + name + ' search the cave';
+        els.stepMessage.textContent = algorithmId === 'bfs'
+          ? 'BFS fans out ring by ring from the start, so the first time it reaches the gold it has found a shortest route.'
+          : 'DFS follows one corridor as far as it can, then backtracks. It finds a route if one exists, but not always the shortest.';
         return;
       }
+      els.stepIndex.textContent = 'Step ' + (state.index + 1) + ' of ' + state.length;
       els.stepKind.textContent = KIND_TEXT[snapshot.kind] || snapshot.kind;
       els.stepKind.className = 'step-kind kind-' + snapshot.kind;
       els.stepTitle.textContent = snapshot.title;
       els.stepMessage.textContent = snapshot.message;
     }
 
-    function renderResults(snapshot, extras) {
+    function renderResults(snapshot, shortest) {
       const c = snapshot ? snapshot.counters : null;
       els.cDiscovered.textContent = c ? c.discovered : '0';
       els.cProcessed.textContent = c ? c.processed : '0';
       els.cFrontier.textContent = c ? c.frontier : '0';
-      els.cMax.textContent = c ? c.maxFrontier : '0';
       els.cChecks.textContent = c ? c.checks : '0';
 
       const verdict = els.verdict;
-      verdict.className = 'verdict';
-      if (!snapshot) {
+      if (!snapshot || snapshot.status === 'searching') {
         els.cMoves.textContent = '–';
-        els.verdictValue.textContent = 'Not run yet';
-        els.verdictNote.textContent = 'Press Start search to explore the cave.';
+        verdict.hidden = true;
         return;
       }
+      verdict.hidden = false;
       if (snapshot.status === 'found') {
-        verdict.classList.add('is-found');
-        els.cMoves.textContent = snapshot.moves + (snapshot.moves === 1 ? ' move' : ' moves');
-        els.verdictValue.textContent = 'Path found: ' + snapshot.moves + (snapshot.moves === 1 ? ' move' : ' moves');
+        verdict.className = 'verdict is-found';
+        els.cMoves.textContent = moves(snapshot.moves);
+        els.verdictValue.textContent = 'Route found: ' + moves(snapshot.moves);
         if (snapshot.algorithm === 'bfs') {
-          els.verdictNote.textContent = 'BFS guarantees this is a shortest safe path.';
-        } else if (extras && extras.shortest !== null && extras.shortest < snapshot.moves) {
-          els.verdictNote.textContent = 'A valid route, but not the shortest: BFS needs only ' + extras.shortest + '.';
+          els.verdictNote.textContent = 'BFS guarantees no shorter safe route exists.';
+        } else if (shortest !== null && shortest < snapshot.moves) {
+          els.verdictNote.textContent = 'Valid, but not the shortest. BFS needs only ' + moves(shortest) + '.';
         } else {
-          els.verdictNote.textContent = 'A valid route. This time it happens to be as short as possible, but DFS does not promise that.';
+          els.verdictNote.textContent = 'Valid, and this time as short as possible. DFS does not promise that.';
         }
-      } else if (snapshot.status === 'nopath') {
-        verdict.classList.add('is-nopath');
+      } else {
+        verdict.className = 'verdict is-nopath';
         els.cMoves.textContent = 'none';
         els.verdictValue.textContent = 'No safe path exists';
-        els.verdictNote.textContent = 'Every cell reachable from the start was explored and the gold was not among them.';
-      } else {
-        verdict.classList.add('is-running');
-        els.cMoves.textContent = '–';
-        els.verdictValue.textContent = 'Searching';
-        els.verdictNote.textContent = 'Step ' + (snapshot.index + 1) + ' of ' + extras.length + '.';
+        els.verdictNote.textContent = 'Every cell reachable from the start was explored; the gold was not among them.';
       }
     }
 
@@ -330,8 +325,8 @@
       const size = map.size;
       const hazards = map.pits.length + 1;
       els.graphSize.textContent =
-        'This map: V = ' + graph.V + ' vertices, E = ' + graph.E + ' edges (' + 2 * graph.E +
-        ' adjacency-list entries). ' + hazards + ' hazard cell' + (hazards === 1 ? ' is' : 's are') + ' left out.';
+        'This map has V = ' + graph.V + ' vertices and E = ' + graph.E + ' edges, so the lists hold ' +
+        2 * graph.E + ' entries. ' + hazards + ' hazard cell' + (hazards === 1 ? ' is' : 's are') + ' left out.';
 
       const current = snapshot ? snapshot.current : -1;
       const nb = snapshot ? snapshot.neighbour : -1;
@@ -341,12 +336,14 @@
       let activeRow = null;
       for (const v of graph.vertices) {
         const row = el('div', 'adj-row');
-        if (v === current || v === nbFrom) row.classList.add('is-current');
-        if (v === current) activeRow = row;
+        if (v === nbFrom || (nbFrom < 0 && v === current)) {
+          row.classList.add('is-current');
+          activeRow = row;
+        }
         row.appendChild(el('span', 'adj-vertex', Grid.label(size, v)));
         const list = el('span', 'adj-list');
         const edges = graph.adj[v];
-        if (!edges.length) list.appendChild(el('span', 'adj-none', 'no neighbours'));
+        if (!edges.length) list.appendChild(el('span', 'adj-none', 'none'));
         for (const e of edges) {
           const item = el('span', 'adj-item', Grid.label(size, e.to));
           item.title = e.dir;
@@ -356,7 +353,7 @@
         row.appendChild(list);
         box.appendChild(row);
       }
-      if (activeRow) {
+      if (activeRow && box.offsetParent) {
         const top = activeRow.offsetTop - box.offsetTop;
         if (top < box.scrollTop || top > box.scrollTop + box.clientHeight - activeRow.offsetHeight) {
           box.scrollTop = Math.max(0, top - box.clientHeight / 3);
@@ -368,42 +365,32 @@
       const box = els.orderCompare;
       box.textContent = '';
       if (!snapshot) {
-        box.appendChild(el('p', 'muted', 'Run a search to compare its discovery order with the route it returns.'));
+        box.appendChild(el('p', 'muted', 'Run a search to compare the order cells were discovered with the route returned.'));
         return;
       }
       const size = map.size;
       const discovered = [];
       snapshot.order.forEach((o, v) => { if (o >= 0) discovered[o] = v; });
-      const onPath = new Set(snapshot.path || []);
+      const route = new Set(snapshot.path || []);
 
-      const row1 = el('div', 'order-row');
-      row1.appendChild(el('span', 'order-label', 'Discovered so far (' + discovered.length + ')'));
+      box.appendChild(el('h3', 'order-label', 'Discovered, in order (' + discovered.length + ')'));
       const seq = el('ol', 'order-seq');
-      discovered.forEach((v) => {
-        const li = el('li', onPath.has(v) ? 'is-route' : '', Grid.label(size, v));
-        seq.appendChild(li);
-      });
-      row1.appendChild(seq);
-      box.appendChild(row1);
+      discovered.forEach((v) => seq.appendChild(el('li', route.has(v) ? 'is-route' : '', Grid.label(size, v))));
+      box.appendChild(seq);
 
-      const row2 = el('div', 'order-row');
-      row2.appendChild(el('span', 'order-label', 'Final route'));
+      box.appendChild(el('h3', 'order-label', 'Route'));
       if (snapshot.path) {
-        const route = el('ol', 'order-seq is-route-list');
-        snapshot.path.forEach((v) => route.appendChild(el('li', 'is-route', Grid.label(size, v))));
-        row2.appendChild(route);
-        const wasted = discovered.length - snapshot.path.length;
-        box.appendChild(row2);
-        box.appendChild(el('p', 'muted',
-          wasted > 0
-            ? wasted + ' discovered cell' + (wasted === 1 ? ' was' : 's were') + ' explored but are not on the route.'
-            : 'Every discovered cell ended up on the route this time.'));
-      } else if (snapshot.status === 'nopath') {
-        row2.appendChild(el('span', 'order-none', 'None: the gold is unreachable.'));
-        box.appendChild(row2);
+        const list = el('ol', 'order-seq');
+        snapshot.path.forEach((v) => list.appendChild(el('li', 'is-route', Grid.label(size, v))));
+        box.appendChild(list);
+        const extra = discovered.length - snapshot.path.length;
+        box.appendChild(el('p', 'muted', extra > 0
+          ? extra + ' discovered cell' + (extra === 1 ? ' is' : 's are') + ' not on the route.'
+          : 'Every discovered cell ended up on the route this time.'));
       } else {
-        row2.appendChild(el('span', 'order-none', 'Not known until the search finishes.'));
-        box.appendChild(row2);
+        box.appendChild(el('p', 'muted', snapshot.status === 'nopath'
+          ? 'None. The gold cannot be reached.'
+          : 'Known once the search finishes.'));
       }
     }
 
@@ -411,14 +398,14 @@
       const box = els.costTable;
       box.textContent = '';
       const rows = [
-        ['Vertices V', graph.V],
-        ['Edges E', graph.E],
+        ['Vertices, V', graph.V],
+        ['Edges, E', graph.E],
         ['V + E', graph.V + graph.E],
-        ['Adjacency entries 2E (max neighbour checks)', 2 * graph.E],
+        ['List entries, 2E', 2 * graph.E],
         ['Neighbour checks so far', snapshot ? snapshot.counters.checks : 0],
-        ['Cells discovered so far (max V)', snapshot ? snapshot.counters.discovered : 0],
-        ['Largest queue or stack (max V)', snapshot ? snapshot.counters.maxFrontier : 0],
-        ['Recorded steps in this run', traceLength || 0],
+        ['Cells discovered so far', snapshot ? snapshot.counters.discovered : 0],
+        ['Largest queue or stack', snapshot ? snapshot.counters.maxFrontier : 0],
+        ['Recorded steps', traceLength || 0],
       ];
       for (const [k, v] of rows) {
         const wrap = el('div');
@@ -428,7 +415,7 @@
     }
 
     return {
-      renderBoard, renderStructure, renderPseudocode, renderExplanation,
+      renderBoard, renderStructure, renderPseudocode, renderStep,
       renderResults, renderAdjacency, renderOrder, renderCost,
     };
   }
